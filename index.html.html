@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>寫信小達人</title>
+  <!-- 引入開源「字嗨注音芫荽體 (Bpmf Iansui)」確保國字加注音正常顯示 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bpmf-iansui@latest/dist/bpmf-iansui.min.css">
+  <style>
+    :root {
+      --primary: #FF8C42;
+      --secondary: #4CB944;
+      --blue: #3A86FF;
+      --purple: #9D4EDD;
+      --danger: #E63946;
+      --bg: #FFF9EC;
+      --card-bg: #FFFFFF;
+      --text: #2B2D42;
+      --line-color: #D4A373;
+      /* 統一指定注音字型 */
+      --zhuyin-font: "BpmfIansui", "Bpmf Iansui Regular", "字嗨注音芫荽", "Bpmf Zihi Only R", "BiauKai", "標楷體", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      font-family: var(--zhuyin-font) !important;
+      user-select: none;
+    }
+
+    body {
+      margin: 0;
+      padding: 15px;
+      background-color: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 12px;
+      width: 100%;
+      position: relative;
+    }
+
+    h1 {
+      color: #D95D39;
+      font-size: 2.2rem;
+      margin: 0 0 12px 0;
+      letter-spacing: 4px;
+      font-weight: normal;
+    }
+
+    /* 導覽按鈕列 */
+    .mode-nav {
+      display: flex;
+      flex-direction: row;
+      gap: 15px;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+
+    .mode-btn {
+      padding: 8px 22px;
+      border-radius: 25px;
+      border: 2px solid var(--primary);
+      background: white;
+      color: #D95D39;
+      font-size: 1.25rem;
+      letter-spacing: 3px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mode-btn.active {
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 4px 8px rgba(255, 140, 66, 0.3);
+    }
+
+    .mode-btn.purple-btn {
+      border-color: var(--purple);
+      color: var(--purple);
+    }
+    .mode-btn.purple-btn.active {
+      background: var(--purple);
+      color: white;
+      box-shadow: 0 4px 8px rgba(157, 78, 221, 0.3);
+    }
+
+    /* 進度條 */
+    .progress-bar {
+      display: flex;
+      flex-direction: row;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+      min-height: 40px;
+    }
+
+    .step-dot {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #E0E0E0;
+      color: #777;
+      font-size: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+
+    .step-dot.topic-tab {
+      width: auto;
+      padding: 0 18px;
+      border-radius: 20px;
+      font-size: 1.15rem;
+      letter-spacing: 2px;
+      white-space: nowrap;
+    }
+
+    .step-dot.active {
+      background: var(--primary);
+      color: white;
+      transform: scale(1.1);
+      box-shadow: 0 4px 8px rgba(255, 140, 66, 0.4);
+    }
+
+    .step-dot.done {
+      background: var(--secondary);
+      color: white;
+    }
+    
+    .step-dot.purple-active {
+      background: var(--purple);
+      color: white;
+      transform: scale(1.1);
+      box-shadow: 0 4px 8px rgba(157, 78, 221, 0.4);
+    }
+
+    /* 統一「空兩格」標記樣式 */
+    .space-mark {
+      color: #D95D39;
+      letter-spacing: 2px;
+    }
+
+    /* ================= 網頁首要畫面：信件總覽 ================= */
+    .intro-stage {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 950px;
+      margin-top: 15px; 
+      animation: fadeIn 0.5s;
+    }
+
+    .start-learning-btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 25px;
+      padding: 12px 36px;
+      font-size: 1.5rem;
+      letter-spacing: 4px;
+      cursor: pointer;
+      box-shadow: 0 6px 14px rgba(255, 140, 66, 0.35);
+      transition: transform 0.2s, background 0.2s;
+    }
+
+    .start-learning-btn:hover {
+      background: #E87A30;
+      transform: scale(1.05);
+    }
+
+    /* 首頁信件結構圖 */
+    .letter-wrapper {
+      width: 100%;
+      background: #ffffff;
+      display: flex;
+      flex-direction: row-reverse;
+      border: 2px solid #000;
+      border-left: none; 
+      margin-top: 55px;
+      margin-bottom: 30px;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+      border-radius: 4px;
+    }
+
+    .letter-col {
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      border-left: 2px solid #000;
+      min-height: 520px;
+      padding: 30px 10px;
+      font-size: 1.3rem;
+      letter-spacing: 3px;
+      position: relative;
+      display: flex;
+      flex-direction: row;
+      align-items: center; 
+      flex: 1;
+    }
+
+    .tag-purple, .tag-blue {
+      border-radius: 8px;
+      padding: 6px 4px;
+      font-size: 1.15rem;
+      letter-spacing: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    .tag-purple {
+      background-color: #E6DEF2;
+      color: #333;
+    }
+
+    .tag-blue {
+      background-color: #4C72F0;
+      color: #fff;
+    }
+
+    .top-tag {
+      position: absolute;
+      top: -40px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      white-space: nowrap;
+    }
+
+    .inline-tag {
+      display: inline-block;
+      margin: 4px 0;
+      padding: 2px 6px;
+      line-height: 1.2;
+      box-shadow: none;
+    }
+
+    .letter-content {
+      line-height: 2.3;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ================= 階段一與示範：直式教學閃卡 ================= */
+    .flashcard-stage {
+      display: none;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      max-width: 1120px;
+      width: 100%;
+      margin-top: 5px;
+    }
+
+    .nav-arrow-btn {
+      background: white;
+      border: 3px solid var(--primary);
+      color: #D95D39;
+      border-radius: 16px;
+      padding: 20px 14px;
+      font-size: 1.3rem;
+      letter-spacing: 3px;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+    }
+
+    .nav-arrow-btn:hover:not(:disabled) {
+      background: #FFF2E6;
+      transform: scale(1.05);
+    }
+    
+    .nav-arrow-btn.purple-arrow {
+      border-color: var(--purple);
+      color: var(--purple);
+    }
+    .nav-arrow-btn.purple-arrow:hover:not(:disabled) {
+      background: #F8F0FF;
+    }
+
+    .nav-arrow-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+
+    .flashcard-scene {
+      width: 680px;
+      height: 540px;
+      perspective: 1200px;
+      cursor: pointer;
+    }
+
+    .flashcard-inner {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transition: transform 0.65s cubic-bezier(0.4, 0.2, 0.2, 1);
+      transform-style: preserve-3d;
+    }
+
+    .flashcard-inner.is-flipped {
+      transform: rotateY(180deg);
+    }
+
+    .flashcard-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      border-radius: 20px;
+      padding: 28px 26px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .flashcard-front {
+      background: #FFFFFF;
+      border: 5px solid var(--primary);
+    }
+    .flashcard-front.purple-border {
+      border-color: var(--purple);
+    }
+
+    .fc-front-header {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      border-left: 3px dashed #FFD6BA;
+      padding-left: 20px;
+    }
+    .fc-front-header.purple-dash {
+      border-left-color: #E0AAFF;
+    }
+
+    .fc-badge {
+      background: var(--primary);
+      color: white;
+      padding: 12px 10px;
+      border-radius: 25px;
+      font-size: 1.4rem;
+      letter-spacing: 4px;
+      text-align: center;
+    }
+    .fc-badge.purple-bg {
+      background: var(--purple);
+    }
+
+    .fc-title {
+      font-size: 2.1rem;
+      color: #2B2D42;
+      margin: 0;
+      letter-spacing: 5px;
+      font-weight: normal;
+    }
+
+    .fc-rule-box {
+      background: #F0F7FF;
+      border-top: 8px solid var(--blue);
+      border-radius: 12px;
+      padding: 20px 18px;
+      font-size: 1.55rem;
+      line-height: 2.2;
+      letter-spacing: 5px;
+      flex: 1;
+      margin: 0 18px;
+    }
+
+    .flip-hint {
+      font-size: 1.25rem;
+      color: #D95D39;
+      background: #FFF3E8;
+      padding: 14px 10px;
+      border-radius: 12px;
+      letter-spacing: 4px;
+      text-align: center;
+      animation: pulse 1.8s infinite;
+    }
+    .flip-hint.purple-hint {
+      color: var(--purple);
+      background: #F8F0FF;
+    }
+
+    .flashcard-back {
+      background: #FFFDF7;
+      border: 5px solid var(--secondary);
+      transform: rotateY(180deg);
+    }
+
+    .fc-back-header {
+      border-left: 3px dashed #B7E4C7;
+      padding-left: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .fc-back-tag {
+      background: var(--secondary);
+      color: white;
+      padding: 12px 10px;
+      border-radius: 25px;
+      font-size: 1.35rem;
+      letter-spacing: 4px;
+      text-align: center;
+    }
+
+    .fc-example-paper {
+      background: #FFFFFF;
+      border: 3px solid var(--line-color);
+      border-radius: 12px;
+      padding: 20px 22px;
+      font-size: 1.65rem;
+      line-height: 2.2;
+      letter-spacing: 5px;
+      flex: 1;
+      margin: 0 20px;
+      display: block; 
+    }
+
+    .fc-example-paper.is-bottom {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    /* 換你寫信：上方文字 + 下方配圖排版 */
+    .fc-example-paper.has-img {
+      display: flex;
+      flex-direction: row; /* vertical-rl 下 row 為由上至下 */
+      justify-content: space-between;
+      align-items: stretch;
+      gap: 14px;
+      font-size: 1.4rem;
+      line-height: 1.95;
+      letter-spacing: 4px;
+      padding: 16px 20px;
+    }
+
+    .fc-example-text {
+      flex: 1;
+    }
+
+    .fc-example-img {
+      writing-mode: horizontal-tb;
+      height: 135px;
+      width: 100%;
+      flex-shrink: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #FFF9EC;
+      border: 2px dashed #E2C699;
+      border-radius: 12px;
+      padding: 8px;
+    }
+
+    .fc-example-img svg {
+      height: 100%;
+      width: auto;
+      max-width: 100%;
+    }
+
+    .start-challenge-btn {
+      background: var(--secondary);
+      color: white;
+      border: none;
+      border-radius: 16px;
+      padding: 20px 16px;
+      font-size: 1.4rem;
+      letter-spacing: 4px;
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      cursor: pointer;
+      box-shadow: 0 6px 14px rgba(76, 185, 68, 0.35);
+      transition: transform 0.2s;
+    }
+
+    .start-challenge-btn:hover {
+      background: #3DA336;
+      transform: scale(1.05);
+    }
+
+    /* ================= 階段二：五步驟大挑戰區 ================= */
+    .main-container {
+      display: none;
+      flex-direction: row-reverse;
+      flex-wrap: wrap;
+      gap: 20px;
+      max-width: 1180px;
+      width: 100%;
+      justify-content: center;
+      align-items: stretch;
+    }
+
+    .task-panel {
+      background: var(--card-bg);
+      border-radius: 16px;
+      padding: 24px 20px;
+      height: 550px;
+      flex: 1.25;
+      min-width: 550px;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+
+    .quiz-vertical-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      height: 100%;
+      width: 100%;
+    }
+
+    .step-header-col {
+      border-left: 2px solid #FFE8D6;
+      padding-left: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .step-header-top {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .step-badge {
+      background: #FFE8D6;
+      color: #D95D39;
+      padding: 12px 8px;
+      border-radius: 20px;
+      font-size: 1.25rem;
+      text-align: center;
+      letter-spacing: 3px;
+    }
+
+    .step-title {
+      font-size: 1.65rem;
+      margin: 0;
+      color: #2B2D42;
+      letter-spacing: 4px;
+      font-weight: normal;
+    }
+
+    /* 愛心生命值列 */
+    .hearts-bar {
+      background: #FFF0F3;
+      border: 2px solid #FFCCD5;
+      border-radius: 16px;
+      padding: 10px 6px;
+      font-size: 1.45rem;
+      letter-spacing: 6px;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.25s, border-color 0.25s;
+    }
+
+    .hearts-bar.heart-lost {
+      background: #FFE5E8;
+      border-color: var(--danger);
+    }
+
+    .rule-col {
+      background: #F0F7FF;
+      border-top: 6px solid #3A86FF;
+      padding: 14px 14px;
+      border-radius: 8px;
+      font-size: 1.3rem;
+      line-height: 2.1;
+      letter-spacing: 4px;
+      max-width: 155px;
+    }
+
+    .question-prompt {
+      font-size: 1.3rem;
+      color: #D95D39;
+      margin: 0;
+      letter-spacing: 4px;
+    }
+
+    .options-vertical-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      height: 100%;
+    }
+
+    .option-card {
+      background: #FFFDF9;
+      border: 3px solid #D8D8D8;
+      border-radius: 12px;
+      padding: 14px 12px;
+      height: 100%;
+      min-width: 96px;
+      font-size: 1.35rem;
+      line-height: 2.0;
+      letter-spacing: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #222;
+      display: block; 
+    }
+
+    .option-card:hover:not(.disabled) {
+      border-color: var(--primary);
+      background: #FFF6EC;
+      transform: translateY(-3px);
+    }
+
+    .option-card.wrong {
+      border-color: var(--danger);
+      background: #FFE5E8;
+    }
+
+    .option-card.correct {
+      border-color: var(--secondary);
+      background: #E8F8E8;
+    }
+
+    .option-card.disabled {
+      cursor: default;
+    }
+
+    .opt-bottom {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .bottom-pair {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      height: 100%;
+    }
+
+    .bottom-line {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      height: 100%;
+    }
+
+    .feedback-col {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      min-width: 75px;
+      border-right: 2px dashed #EEE;
+      padding-right: 14px;
+    }
+
+    .feedback-msg {
+      font-size: 1.25rem;
+      line-height: 2.0;
+      letter-spacing: 4px;
+    }
+
+    .next-btn {
+      background: var(--secondary);
+      color: white;
+      border: none;
+      padding: 18px 12px;
+      font-size: 1.35rem;
+      border-radius: 12px;
+      cursor: pointer;
+      display: none;
+      letter-spacing: 4px;
+      box-shadow: 0 4px 10px rgba(76, 185, 68, 0.3);
+    }
+
+    .next-btn:hover {
+      background: #3DA336;
+    }
+
+    /* 左側：直式信紙預覽區 */
+    .letter-paper {
+      background: #FFFDF7;
+      border: 4px solid var(--line-color);
+      border-radius: 12px;
+      padding: 22px 18px;
+      width: 510px;
+      height: 550px;
+      box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+      writing-mode: vertical-rl;
+      text-orientation: upright;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .paper-col {
+      border-left: 1px dashed #E2C699;
+      padding: 0 12px;
+      height: 100%;
+      font-size: 1.4rem;
+      line-height: 2.05;
+      letter-spacing: 4px;
+      transition: background-color 0.3s;
+    }
+
+    .paper-col:last-child {
+      border-left: none;
+    }
+
+    .col-highlight {
+      background-color: rgba(255, 140, 66, 0.16);
+      border-radius: 8px;
+    }
+
+    .align-bottom {
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+    }
+
+    .placeholder-box {
+      color: #AAA;
+      font-size: 1.2rem;
+    }
+
+    /* 過關與失敗畫面 */
+    .victory-screen,
+    .gameover-screen {
+      display: none;
+      height: 100%;
+      width: 100%;
+      justify-content: center;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .victory-screen h2 {
+      font-size: 1.75rem;
+      color: var(--secondary);
+      margin: 0;
+      letter-spacing: 4px;
+      font-weight: normal;
+    }
+
+    .gameover-screen h2 {
+      font-size: 1.75rem;
+      color: var(--danger);
+      margin: 0;
+      letter-spacing: 4px;
+      font-weight: normal;
+    }
+
+    .victory-screen p,
+    .gameover-screen p {
+      font-size: 1.35rem;
+      line-height: 2.1;
+      letter-spacing: 4px;
+      margin: 0;
+    }
+
+    .result-btn-group {
+      display: flex;
+      flex-direction: row;
+      gap: 14px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.65; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>✉️ 寫信小達人</h1>
+    <!-- 導覽列 -->
+    <div class="mode-nav">
+      <button class="mode-btn active" id="btnModeIntro" onclick="switchMode('intro')">🗺️ 信件總覽</button>
+      <button class="mode-btn" id="btnModeFlashcard" onclick="switchMode('flashcard')">📖 五步驟說明</button>
+      <button class="mode-btn" id="btnModeChallenge" onclick="switchMode('challenge')">🎮 五步驟挑戰</button>
+      <button class="mode-btn purple-btn" id="btnModeExample" onclick="switchMode('example')">📝 換你寫信</button>
+    </div>
+    <!-- 進度條／主題列 -->
+    <div class="progress-bar" id="progressBar"></div>
+  </header>
+
+  <!-- 首要畫面：信件結構總覽圖 -->
+  <div class="intro-stage" id="introStage">
+    
+    <div class="letter-wrapper">
+      <!-- 第 1 欄：對收信人的稱呼 -->
+      <div class="letter-col">
+        <div class="tag-purple top-tag">對收信人的稱呼</div>
+        <div class="letter-content">親愛的（  ）：</div>
+      </div>
+    
+      <!-- 第 2 欄：問候的話 -->
+      <div class="letter-col">
+        <div class="tag-purple top-tag">問候的話</div>
+        <div class="letter-content"><span class="space-mark">○○</span>（  ）</div>
+      </div>
+    
+      <!-- 第 3 欄：書信內容 -->
+      <div class="letter-col">
+        <div class="tag-purple top-tag">書信內容</div>
+        <div class="letter-content">
+          <span class="space-mark">○○</span>最近我參加（<span class="tag-blue inline-tag">活動名稱</span>）的活動。在這個活動中，
+        </div>
+      </div>
+    
+      <!-- 第 4 欄：活動內容 -->
+      <div class="letter-col">
+        <div class="tag-blue top-tag">活動內容</div>
+        <div class="letter-content">我（  ），</div>
+      </div>
+    
+      <!-- 第 5 欄：活動感想 -->
+      <div class="letter-col">
+        <div class="tag-blue top-tag">活動感想</div>
+        <div class="letter-content">感覺（  ），希望下次你也可以一起參加。</div>
+      </div>
+    
+      <!-- 第 6 欄：祝福的話 -->
+      <div class="letter-col">
+        <div class="tag-purple top-tag">祝福的話</div>
+        <div class="letter-content"><span class="space-mark">○○</span>祝</div>
+      </div>
+    
+      <!-- 第 7 欄：括號空白區 -->
+      <div class="letter-col">
+        <div class="letter-content">（  ）</div>
+      </div>
+    
+      <!-- 第 8 欄：寫信人 -->
+      <div class="letter-col">
+        <div class="tag-purple" style="margin-top: auto;">寫信人</div>
+        <div class="letter-content" style="margin-top: 12px;">（  ）上</div>
+      </div>
+    
+      <!-- 第 9 欄：寫信日期 -->
+      <div class="letter-col">
+        <div class="tag-purple" style="margin-top: auto;">寫信日期</div>
+        <div class="letter-content" style="margin-top: 12px;">（ ）月（ ）日</div>
+      </div>
+    </div>
+
+    <button class="start-learning-btn" onclick="switchMode('flashcard')">開始學習五步驟 ➡️</button>
+  </div>
+
+  <!-- 階段一與示範：閃卡展示區 -->
+  <div class="flashcard-stage" id="flashcardStage">
+    <button class="nav-arrow-btn" id="prevCardBtn" onclick="changeCard(-1)">⬅️ 上一張</button>
+
+    <div class="flashcard-scene" onclick="flipCard()">
+      <div class="flashcard-inner" id="flashcardInner">
+        <!-- 閃卡正面 -->
+        <div class="flashcard-face flashcard-front" id="fcFrontBox">
+          <div class="fc-front-header" id="fcFrontHeader">
+            <div class="fc-badge" id="fcBadge"></div>
+            <h2 class="fc-title" id="fcTitle"></h2>
+          </div>
+          <div class="fc-rule-box" id="fcRule"></div>
+          <div class="flip-hint" id="fcFlipHintFront">👆點卡片看寫法範例</div>
+        </div>
+
+        <!-- 閃卡背面 -->
+        <div class="flashcard-face flashcard-back">
+          <div class="fc-back-header">
+            <div class="fc-back-tag" id="fcBackTag"></div>
+            <h2 class="fc-title" id="fcBackTitle"></h2>
+          </div>
+          <div class="fc-example-paper" id="fcExample"></div>
+          <div class="flip-hint" style="background: #E8F8E8; color: #2B9348;">👆點卡片看寫法說明</div>
+        </div>
+      </div>
+    </div>
+
+    <button class="nav-arrow-btn" id="nextCardBtn" onclick="changeCard(1)">➡️ 下一張</button>
+    <button class="start-challenge-btn" id="startChallengeBtn" style="display: none;" onclick="switchMode('challenge')">🎮 五步驟挑戰</button>
+  </div>
+
+  <!-- 階段二：五步驟挑戰區 -->
+  <div class="main-container" id="challengeStage">
+    <!-- 右側：全直式互動任務區 -->
+    <div class="task-panel">
+      <div class="quiz-vertical-wrap" id="quizArea">
+        <div class="step-header-col">
+          <div class="step-header-top">
+            <div class="step-badge" id="stepBadge">第一步</div>
+            <h2 class="step-title" id="stepTitle">對收信人的稱呼</h2>
+          </div>
+          <!-- 愛心生命值 -->
+          <div class="hearts-bar" id="heartsBar" title="剩餘愛心">❤️❤️❤️</div>
+        </div>
+
+        <div class="rule-col" id="ruleBox"></div>
+
+        <p class="question-prompt">👈請選出正確直式寫法：</p>
+
+        <div class="options-vertical-grid" id="optionsGrid"></div>
+
+        <div class="feedback-col">
+          <div class="feedback-msg" id="feedbackMsg"></div>
+          <button class="next-btn" id="nextBtn" onclick="nextStep()">下一步</button>
+        </div>
+      </div>
+
+      <!-- 全直式過關畫面 -->
+      <div class="victory-screen" id="victoryScreen">
+        <div style="font-size: 3rem;">🏆✉️</div>
+        <h2>恭喜完成五步驟挑戰！</h2>
+        <p id="victoryHearts" style="color: #E63946;"></p>
+        <p>
+          你已經學會寫信五步驟和直式格式囉！<br>
+          現在可以點上方「換你寫信」看更多範例，或再練習一次！
+        </p>
+
+        <button class="next-btn" style="display: block; background: var(--primary);" onclick="resetGame()">再挑戰一次</button>
+      </div>
+
+      <!-- 全直式愛心歸零失敗畫面 -->
+      <div class="gameover-screen" id="gameOverScreen">
+        <div style="font-size: 3rem;">💔</div>
+        <h2>愛心用完囉！</h2>
+        <p>
+          沒關係，寫信格式多看幾次就會記起來！<br>
+          可以先回去複習五步驟說明，或直接再挑戰一次喔！
+        </p>
+        <div class="result-btn-group">
+          <button class="next-btn" style="display: block; background: var(--primary);" onclick="resetGame()">再挑戰一次</button>
+          <button class="next-btn" style="display: block; background: var(--blue);" onclick="resetGame(); switchMode('flashcard');">看五步驟說明</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 左側：直式信紙預覽區 -->
+    <div class="letter-paper" id="letterPaper">
+      <div class="paper-col col-highlight" id="col-1">
+        <span class="placeholder-box">（第一步：稱呼）</span>
+      </div>
+      <div class="paper-col" id="col-2">
+        <span class="placeholder-box">（第二步：問候）</span>
+      </div>
+      <div class="paper-col" id="col-3">
+        <span class="placeholder-box">（第三步：書信內容）</span>
+      </div>
+      <div class="paper-col" id="col-4">
+        <span class="placeholder-box">（第四步：祝福）</span>
+      </div>
+      <div class="paper-col align-bottom" id="col-5">
+        <span class="placeholder-box">（第五步：署名與日期）</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const stepsData = [
+      {
+        badge: "第一步",
+        title: "對收信人的稱呼",
+        rule: "💡寫法說明：寫在信紙第一行，從最上面寫起，後面加上冒號（：）。",
+        exampleHtml: "親愛的小華：",
+        exampleBottom: false,
+        colId: "col-1",
+        paperText: "親愛的小華：",
+        options: [
+          { html: "親愛的小華：", correct: true, msg: "🌟答對了！第一行頂格寫，後面有加冒號（：）！" },
+          { html: "親愛的小華，", correct: false, msg: "💪再看一次！稱呼後面要加「冒號（：）」，不是逗號喔！" },
+          { html: "<span class='space-mark'>○○</span>親愛的小華：", correct: false, msg: "💪稱呼要從「最上面」寫起，不用空兩格（○○）喔！" }
+        ]
+      },
+      {
+        badge: "第二步",
+        title: "問候的話",
+        rule: "💡寫法說明：寫在第二行，開頭空兩格（○○），表達關心。",
+        exampleHtml: "<span class='space-mark'>○○</span>近來好嗎？",
+        exampleBottom: false,
+        colId: "col-2",
+        paperText: "<span class='space-mark'>○○</span>近來好嗎？",
+        options: [
+          { html: "近來好嗎？", correct: false, msg: "💪要注意！問候的話寫在第二行，開頭要「空兩格（○○）」喔！" },
+          { html: "<span class='space-mark'>○○</span>近來好嗎？", correct: true, msg: "🌟好棒！開頭空兩格（○○），很有禮貌地表達關心！" },
+          { html: "<span class='space-mark'>○○</span>祝你平平安安。", correct: false, msg: "💪這是祝福的話，問候的話要像「近來好嗎？」這樣表達關心！" }
+        ]
+      },
+      {
+        badge: "第三步",
+        title: "書信內容",
+        rule: "💡寫法說明：信件的核心，想要告訴收信人的事，包括「最近參加的活動名稱」與「活動感想」。",
+        exampleHtml: "<span class='space-mark'>○○</span>最近我參加了運動會的趣味競賽，感覺又緊張又刺激。",
+        exampleBottom: false,
+        colId: "col-3",
+        paperText: "<span class='space-mark'>○○</span>最近我參加了運動會的趣味競賽，感覺又緊張又刺激。",
+        options: [
+          { html: "<span class='space-mark'>○○</span>最近我參加了運動會的趣味競賽。", correct: false, msg: "💪還少了一半！除了活動名稱，還要寫出「活動感想」喔！" },
+          { html: "<span class='space-mark'>○○</span>感覺又緊張又刺激，希望下次一起去。", correct: false, msg: "💪你忘了寫出「最近參加的活動名稱」是什麼囉！" },
+          { html: "<span class='space-mark'>○○</span>最近我參加了運動會的趣味競賽，感覺又緊張又刺激。", correct: true, msg: "🌟太厲害了！有空兩格（○○），也寫出活動名稱和感想！" }
+        ]
+      },
+      {
+        badge: "第四步",
+        title: "祝福的話",
+        rule: "💡寫法說明：寫在內文結束後，另起一行，空兩格（○○）寫「祝」，下一行最上面寫祝福語。",
+        exampleHtml: "<span class='space-mark'>○○</span>祝<br>平平安安",
+        exampleBottom: false,
+        colId: "col-4",
+        paperText: "<span class='space-mark'>○○</span>祝<br>平平安安",
+        options: [
+          { html: "<span class='space-mark'>○○</span>祝<br>平平安安", correct: true, msg: "🌟完全正確！空兩格（○○）寫「祝」，下一行頂格寫祝福語！" },
+          { html: "<span class='space-mark'>○○</span>祝平平安安", correct: false, msg: "💪不對喔！祝福語要換到「下一行最上面」寫！" },
+          { html: "祝<br><span class='space-mark'>○○</span>平平安安", correct: false, msg: "💪位置反了！是空兩格（○○）寫「祝」，下一行最上面寫祝福語！" }
+        ]
+      },
+      {
+        badge: "第五步",
+        title: "寫信人署名及寫信日期",
+        rule: "💡寫法說明：寫在祝福的話下一行，對齊底部。表明自己身分或姓名，記下寫信當天的日期。",
+        exampleHtml: "<div class='bottom-pair'><div class='bottom-line'>你的好朋友 小明 上</div><div class='bottom-line'>二〇二六年十月二十日</div></div>",
+        exampleBottom: true,
+        colId: "col-5",
+        paperText: "<div class='bottom-pair'><div class='bottom-line'>你的好朋友 小明 上</div><div class='bottom-line'>二〇二六年十月二十日</div></div>",
+        options: [
+          { html: "<div>你的好朋友 小明 上</div><div>二〇二六年十月二十日</div>", correct: false, msg: "💪看清楚位置！寫信人和日期不能寫在最上面，要「對齊底部」喔！" },
+          { html: "<div class='bottom-pair'><div class='bottom-line'>你的好朋友 小明 上</div><div class='bottom-line'>二〇二六年十月二十日</div></div>", bottomAlign: true, correct: true, msg: "🌟太完美了！兩行都對齊底部，清楚寫出署名和日期！" },
+          { html: "<div class='bottom-pair'><div class='bottom-line'>二〇二六年十月二十日</div></div>", bottomAlign: true, correct: false, msg: "💪雖然有對齊底部，但忘了寫上「寫信人署名」喔！" }
+        ]
+      }
+    ];
+
+    const examplesData = [
+      {
+        badge: "主題一",
+        title: "萬聖節表演",
+        rule: "💡寫作亮點：表達心跳與成就感！\n\n可以把「很緊張」或是跳完舞「很有成就感」的心情寫出來喔！",
+        exampleHtml: "<span class='space-mark'>○○</span>最近我參加<strong>萬聖節表演</strong>的活動。在這個活動中，我<strong>上台跳舞</strong>，感覺<strong>很緊張又很有成就感</strong>，希望下次你也可以一起參加。",
+        exampleBottom: false,
+        imageSvg: `
+          <svg viewBox="0 0 220 120" xmlns="http://www.w3.org/2000/svg" aria-label="萬聖節表演插圖">
+            <rect width="220" height="120" rx="12" fill="#2E1A47"/>
+            <!-- 星星與音符 -->
+            <circle cx="32" cy="24" r="3" fill="#FFD166"/>
+            <circle cx="190" cy="28" r="3.5" fill="#FFD166"/>
+            <circle cx="170" cy="18" r="2" fill="#FFF"/>
+            <text x="26" y="62" font-size="22" fill="#FF9F1C">♪</text>
+            <text x="176" y="66" font-size="22" fill="#FF9F1C">♫</text>
+            <!-- 舞台 -->
+            <rect x="20" y="96" width="180" height="16" rx="4" fill="#8D5524"/>
+            <!-- 南瓜身體 -->
+            <ellipse cx="110" cy="74" rx="34" ry="26" fill="#FF7B00"/>
+            <ellipse cx="110" cy="74" rx="20" ry="26" fill="#FF8C1A"/>
+            <!-- 南瓜臉 -->
+            <polygon points="94,68 102,62 104,70" fill="#2E1A47"/>
+            <polygon points="126,68 118,62 116,70" fill="#2E1A47"/>
+            <path d="M95 80 Q110 92 125 80" stroke="#2E1A47" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+            <!-- 女巫帽 -->
+            <ellipse cx="110" cy="48" rx="36" ry="7" fill="#5A189A"/>
+            <polygon points="88,48 110,14 132,48" fill="#5A189A"/>
+            <rect x="96" y="42" width="28" height="5" fill="#FFD166"/>
+          </svg>`
+      },
+      {
+        badge: "主題二",
+        title: "一起做早餐",
+        rule: "💡寫作亮點：表達溫暖與幸福感！\n\n可以把大家一起分享食物，覺得「很幸福又開心」的感覺寫出來喔！",
+        exampleHtml: "<span class='space-mark'>○○</span>最近我參加<strong>和同學做早餐</strong>的活動。在這個活動中，我<strong>和大家分享食物</strong>，感覺<strong>超級幸福又開心</strong>，希望下次你也可以一起參加。",
+        exampleBottom: false,
+        imageSvg: `
+          <svg viewBox="0 0 220 120" xmlns="http://www.w3.org/2000/svg" aria-label="一起做早餐插圖">
+            <rect width="220" height="120" rx="12" fill="#FFF3D6"/>
+            <!-- 餐盤 -->
+            <ellipse cx="95" cy="72" rx="64" ry="36" fill="#FFFFFF" stroke="#E0C3A0" stroke-width="3"/>
+            <!-- 吐司 -->
+            <rect x="46" y="46" width="44" height="44" rx="8" fill="#D48C46"/>
+            <rect x="51" y="51" width="34" height="34" rx="5" fill="#FCE5B8"/>
+            <rect x="61" y="61" width="14" height="14" rx="2" fill="#FFD166"/>
+            <!-- 荷包蛋 -->
+            <path d="M98 62 Q112 46 130 56 Q148 64 138 82 Q122 94 102 84 Q90 76 98 62 Z" fill="#FFFDF7" stroke="#E6E1D6" stroke-width="2"/>
+            <circle cx="118" cy="70" r="11" fill="#FFB703"/>
+            <circle cx="114" cy="66" r="3" fill="#FFE082"/>
+            <!-- 牛奶杯 -->
+            <rect x="168" y="46" width="32" height="48" rx="5" fill="#FFFFFF" stroke="#90E0EF" stroke-width="3"/>
+            <rect x="171" y="58" width="26" height="33" rx="2" fill="#E0F7FA"/>
+            <path d="M178 36 Q180 28 184 36 M188 34 Q190 26 194 34" stroke="#FF8C42" stroke-width="2" fill="none" stroke-linecap="round"/>
+          </svg>`
+      },
+      {
+        badge: "主題三",
+        title: "戶外教育吃米粉",
+        rule: "💡寫作亮點：強調食物美味與歡樂氣氛！\n\n可以把米粉「很好吃」，還有跟好朋友出門「很快樂」的感覺寫出來喔！",
+        exampleHtml: "<span class='space-mark'>○○</span>最近我參加<strong>戶外教育</strong>的活動。在這個活動中，我<strong>吃了美味的米粉跟爆米香</strong>，感覺<strong>很快樂</strong>，希望下次你也可以一起參加。",
+        exampleBottom: false,
+        imageSvg: `
+          <svg viewBox="0 0 220 120" xmlns="http://www.w3.org/2000/svg" aria-label="戶外教育吃米粉插圖">
+            <rect width="220" height="120" rx="12" fill="#E3F6E5"/>
+            <!-- 太陽與小樹 -->
+            <circle cx="186" cy="28" r="14" fill="#FFD166"/>
+            <rect x="28" y="68" width="10" height="28" fill="#8D5524"/>
+            <circle cx="33" cy="56" r="18" fill="#52B788"/>
+            <!-- 熱氣 -->
+            <path d="M98 30 Q93 22 98 14 M114 28 Q109 20 114 12 M130 30 Q125 22 130 14" stroke="#A8A8A8" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <!-- 米粉麵條 -->
+            <ellipse cx="114" cy="58" rx="38" ry="16" fill="#FFF8E7" stroke="#E2C699" stroke-width="2"/>
+            <path d="M84 56 Q98 48 112 56 T142 56 M88 63 Q102 55 116 63 T140 63" stroke="#E0A458" stroke-width="2" fill="none"/>
+            <!-- 配料（胡蘿蔔與蔥花） -->
+            <rect x="98" y="50" width="10" height="5" rx="2" fill="#FF6B35"/>
+            <circle cx="122" cy="52" r="3.5" fill="#4CB944"/>
+            <circle cx="110" cy="60" r="3" fill="#4CB944"/>
+            <!-- 筷子 -->
+            <line x1="126" y1="54" x2="174" y2="26" stroke="#A0522D" stroke-width="3.5" stroke-linecap="round"/>
+            <line x1="130" y1="60" x2="178" y2="36" stroke="#A0522D" stroke-width="3.5" stroke-linecap="round"/>
+            <!-- 碗 -->
+            <path d="M72 60 Q74 102 114 102 Q154 102 156 60 Z" fill="#E63946"/>
+            <rect x="98" y="98" width="32" height="8" rx="3" fill="#B51724"/>
+            <line x1="78" y1="72" x2="150" y2="72" stroke="#FFD166" stroke-width="3"/>
+          </svg>`
+      },
+      {
+        badge: "主題四",
+        title: "吹泡泡",
+        rule: "💡寫作亮點：表達驚奇與趣味！\n\n可以把看到超級大泡泡在天上飛，覺得「又驚奇又好玩」的感覺寫出來喔！",
+        exampleHtml: "<span class='space-mark'>○○</span>最近我參加<strong>吹泡泡</strong>的活動。在這個活動中，我<strong>看到超級大泡泡在天上飛</strong>，感覺<strong>又驚奇又好玩</strong>，希望下次你也可以一起參加。",
+        exampleBottom: false,
+        imageSvg: `
+          <svg viewBox="0 0 220 120" xmlns="http://www.w3.org/2000/svg" aria-label="吹泡泡插圖">
+            <rect width="220" height="120" rx="12" fill="#E0F4FF"/>
+            <!-- 泡泡棒 -->
+            <line x1="34" y1="104" x2="62" y2="70" stroke="#FF6B6B" stroke-width="6" stroke-linecap="round"/>
+            <circle cx="70" cy="60" r="14" fill="none" stroke="#FF6B6B" stroke-width="5"/>
+            <!-- 各種大小的泡泡 -->
+            <circle cx="106" cy="52" r="12" fill="#FFFFFF" fill-opacity="0.55" stroke="#4EA8DE" stroke-width="2"/>
+            <circle cx="102" cy="48" r="3" fill="#FFFFFF"/>
+
+            <circle cx="148" cy="44" r="24" fill="#FFFFFF" fill-opacity="0.55" stroke="#9D4EDD" stroke-width="2.5"/>
+            <path d="M136 34 Q142 28 150 30" stroke="#FFFFFF" stroke-width="3" fill="none" stroke-linecap="round"/>
+            <circle cx="160" cy="54" r="3" fill="#FF99C8" fill-opacity="0.7"/>
+
+            <circle cx="188" cy="76" r="16" fill="#FFFFFF" fill-opacity="0.55" stroke="#48BFE3" stroke-width="2"/>
+            <circle cx="183" cy="70" r="4" fill="#FFFFFF"/>
+
+            <circle cx="122" cy="86" r="10" fill="#FFFFFF" fill-opacity="0.55" stroke="#FF8C42" stroke-width="2"/>
+            <circle cx="119" cy="83" r="2.5" fill="#FFFFFF"/>
+          </svg>`
+      }
+    ];
+
+    const MAX_HEARTS = 3;
+    let hearts = MAX_HEARTS;
+    let currentMode = "intro"; 
+    let currentCard = 0;
+    let currentStep = 0;
+
+    function renderHearts(highlightLoss = false) {
+      const bar = document.getElementById("heartsBar");
+      bar.innerText = "❤️".repeat(hearts) + "🤍".repeat(MAX_HEARTS - hearts);
+      if (highlightLoss) {
+        bar.classList.add("heart-lost");
+        setTimeout(() => bar.classList.remove("heart-lost"), 450);
+      }
+    }
+
+    function renderProgressBar(mode) {
+      const pb = document.getElementById("progressBar");
+      pb.innerHTML = "";
+      
+      if (mode === "intro") {
+        return; 
+      } else if (mode === "example") {
+        const exampleTitles = ["1.萬聖節表演", "2.一起做早餐", "3.戶外教育", "4.吹泡泡"];
+        for (let i = 0; i < exampleTitles.length; i++) {
+          const dot = document.createElement("div");
+          dot.className = "step-dot topic-tab";
+          dot.innerText = exampleTitles[i];
+          dot.onclick = () => jumpToCard(i);
+          pb.appendChild(dot);
+        }
+      } else {
+        const len = stepsData.length;
+        for (let i = 0; i < len; i++) {
+          const dot = document.createElement("div");
+          dot.className = "step-dot";
+          dot.innerText = i + 1;
+          dot.onclick = () => jumpToCard(i);
+          pb.appendChild(dot);
+        }
+      }
+    }
+
+    function renderCard(index) {
+      const activeData = (currentMode === "example") ? examplesData : stepsData;
+      const data = activeData[index];
+      const inner = document.getElementById("flashcardInner");
+      inner.classList.remove("is-flipped");
+
+      const isExample = (currentMode === "example");
+      document.getElementById("fcFrontBox").classList.toggle("purple-border", isExample);
+      document.getElementById("fcFrontHeader").classList.toggle("purple-dash", isExample);
+      document.getElementById("fcBadge").classList.toggle("purple-bg", isExample);
+      document.getElementById("fcFlipHintFront").classList.toggle("purple-hint", isExample);
+      
+      document.getElementById("prevCardBtn").classList.toggle("purple-arrow", isExample);
+      document.getElementById("nextCardBtn").classList.toggle("purple-arrow", isExample);
+
+      document.getElementById("fcBadge").innerText = data.badge;
+      document.getElementById("fcTitle").innerText = data.title;
+      document.getElementById("fcRule").innerHTML = data.rule.replace(/\n/g, "<br>");
+
+      document.getElementById("fcBackTag").innerText = isExample ? (data.badge + "內容示範") : (data.badge + "範例");
+      document.getElementById("fcBackTitle").innerText = data.title;
+
+      const exampleBox = document.getElementById("fcExample");
+      exampleBox.classList.remove("is-bottom", "has-img");
+
+      if (isExample && data.imageSvg) {
+        exampleBox.classList.add("has-img");
+        exampleBox.innerHTML = `<div class="fc-example-text">${data.exampleHtml}</div><div class="fc-example-img">${data.imageSvg}</div>`;
+      } else {
+        exampleBox.innerHTML = data.exampleHtml;
+        if (data.exampleBottom) {
+          exampleBox.classList.add("is-bottom");
+        }
+      }
+
+      const dots = document.querySelectorAll(".progress-bar .step-dot");
+      dots.forEach((dot, i) => {
+        dot.classList.remove("active", "done", "purple-active");
+        if (i < index) dot.classList.add("done");
+        if (i === index) {
+          if (isExample) dot.classList.add("purple-active");
+          else dot.classList.add("active");
+        }
+      });
+
+      document.getElementById("prevCardBtn").disabled = (index === 0);
+      
+      if (index === activeData.length - 1) {
+        document.getElementById("nextCardBtn").style.display = "none";
+        document.getElementById("startChallengeBtn").style.display = isExample ? "none" : "block";
+      } else {
+        document.getElementById("nextCardBtn").style.display = "block";
+        document.getElementById("startChallengeBtn").style.display = "none";
+      }
+    }
+
+    function flipCard() {
+      document.getElementById("flashcardInner").classList.toggle("is-flipped");
+    }
+
+    function changeCard(delta) {
+      const activeData = (currentMode === "example") ? examplesData : stepsData;
+      const next = currentCard + delta;
+      if (next >= 0 && next < activeData.length) {
+        currentCard = next;
+        renderCard(currentCard);
+      }
+    }
+
+    function jumpToCard(index) {
+      if (currentMode === "flashcard" || currentMode === "example") {
+        currentCard = index;
+        renderCard(currentCard);
+      }
+    }
+
+    function switchMode(mode) {
+      currentMode = mode;
+      
+      document.getElementById("btnModeIntro").classList.toggle("active", mode === "intro");
+      document.getElementById("btnModeFlashcard").classList.toggle("active", mode === "flashcard");
+      document.getElementById("btnModeChallenge").classList.toggle("active", mode === "challenge");
+      document.getElementById("btnModeExample").classList.toggle("active", mode === "example");
+
+      const stageIntro = document.getElementById("introStage");
+      const stageFc = document.getElementById("flashcardStage");
+      const stageCh = document.getElementById("challengeStage");
+
+      stageIntro.style.display = "none";
+      stageFc.style.display = "none";
+      stageCh.style.display = "none";
+
+      renderProgressBar(mode);
+
+      if (mode === "intro") {
+        stageIntro.style.display = "flex";
+      } else if (mode === "flashcard" || mode === "example") {
+        stageFc.style.display = "flex";
+        currentCard = 0; 
+        renderCard(currentCard);
+      } else if (mode === "challenge") {
+        stageCh.style.display = "flex";
+        renderHearts();
+        if (hearts > 0 && currentStep < stepsData.length) {
+          loadStep(currentStep);
+        }
+      }
+    }
+
+    function loadStep(index) {
+      const data = stepsData[index];
+      document.getElementById("stepBadge").innerText = data.badge;
+      document.getElementById("stepTitle").innerText = data.title;
+      document.getElementById("ruleBox").innerText = data.rule;
+      document.getElementById("feedbackMsg").innerText = "";
+      document.getElementById("nextBtn").style.display = "none";
+
+      for (let i = 1; i <= 5; i++) {
+        document.getElementById(`col-${i}`).classList.remove("col-highlight");
+      }
+      document.getElementById(data.colId).classList.add("col-highlight");
+
+      const dots = document.querySelectorAll(".progress-bar .step-dot");
+      dots.forEach((dot, i) => {
+        dot.classList.remove("active", "done");
+        if (i < index) dot.classList.add("done");
+        if (i === index) dot.classList.add("active");
+      });
+
+      const optionsGrid = document.getElementById("optionsGrid");
+      optionsGrid.innerHTML = "";
+      data.options.forEach((opt) => {
+        const card = document.createElement("div");
+        card.className = "option-card" + (opt.bottomAlign ? " opt-bottom" : "");
+        card.innerHTML = opt.html;
+        card.onclick = () => {
+          if (!card.classList.contains("disabled")) {
+            checkAnswer(card, opt, data);
+          }
+        };
+        optionsGrid.appendChild(card);
+      });
+    }
+
+    function checkAnswer(card, opt, data) {
+      const feedback = document.getElementById("feedbackMsg");
+      const allCards = document.querySelectorAll(".option-card");
+
+      if (opt.correct) {
+        allCards.forEach(c => c.classList.add("disabled"));
+        card.classList.add("correct");
+        feedback.style.color = "#2B9348";
+        feedback.innerText = opt.msg;
+
+        const col = document.getElementById(data.colId);
+        col.innerHTML = data.paperText;
+
+        const nextBtn = document.getElementById("nextBtn");
+        nextBtn.innerText = currentStep === 4 ? "完成挑戰" : "下一步";
+        nextBtn.style.display = "block";
+      } else {
+        card.classList.add("wrong");
+        hearts = Math.max(0, hearts - 1);
+        renderHearts(true);
+
+        feedback.style.color = "#D90429";
+        feedback.innerText = opt.msg;
+
+        if (hearts <= 0) {
+          allCards.forEach(c => c.classList.add("disabled"));
+          setTimeout(() => {
+            document.getElementById("quizArea").style.display = "none";
+            document.getElementById("gameOverScreen").style.display = "flex";
+          }, 800);
+        } else {
+          setTimeout(() => card.classList.remove("wrong"), 500);
+        }
+      }
+    }
+
+    function nextStep() {
+      currentStep++;
+      if (currentStep < stepsData.length) {
+        loadStep(currentStep);
+      } else {
+        document.querySelectorAll(".progress-bar .step-dot")[4].classList.add("done");
+        document.querySelectorAll(".progress-bar .step-dot")[4].classList.remove("active");
+        document.getElementById("col-5").classList.remove("col-highlight");
+        document.getElementById("victoryHearts").innerText = "剩餘愛心：" + "❤️".repeat(hearts) + "🤍".repeat(MAX_HEARTS - hearts);
+        document.getElementById("quizArea").style.display = "none";
+        document.getElementById("victoryScreen").style.display = "flex";
+      }
+    }
+
+    function resetGame() {
+      currentStep = 0;
+      hearts = MAX_HEARTS;
+      renderHearts();
+      const placeholders = [
+        "（第一步：稱呼）",
+        "（第二步：問候）",
+        "（第三步：書信內容）",
+        "（第四步：祝福）",
+        "（第五步：署名與日期）"
+      ];
+      for (let i = 1; i <= 5; i++) {
+        document.getElementById(`col-${i}`).innerHTML = `<span class="placeholder-box">${placeholders[i-1]}</span>`;
+      }
+      document.querySelectorAll(".progress-bar .step-dot").forEach(d => d.classList.remove("done", "active"));
+      document.getElementById("victoryScreen").style.display = "none";
+      document.getElementById("gameOverScreen").style.display = "none";
+      document.getElementById("quizArea").style.display = "flex";
+      loadStep(0);
+    }
+
+    switchMode("intro");
+  </script>
+</body>
+</html>
